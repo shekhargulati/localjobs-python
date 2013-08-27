@@ -5,7 +5,6 @@ from flask.ext.login import login_user , logout_user , current_user , login_requ
 from bson.objectid import ObjectId
 
 @app.route('/')
-@login_required
 def index():
 	return render_template('index.html',title="Welcome to LocalJobs -- Location Aware Job Search Application")
 
@@ -37,7 +36,7 @@ def signin():
 	registered_user.id = users_dict.get('_id')
 	login_user(registered_user, remember = remember_me)
 	flash('Logged in successfully')
-	return redirect(request.args.get('next') or url_for('index'))
+	return redirect(request.args.get('next') or url_for('search'))
 
 @app.route('/register' , methods=['GET','POST'])
 def register():
@@ -47,7 +46,8 @@ def register():
 	if db.users.find_one({'email':email}):
 		flash('User exist with email id %s' % email,'error')
 		return redirect(url_for('register'))
-	user = Users(request.form['email'],request.form['password'],request.form['linkedinUrl'],request.form['skills'])
+	skills = [skill.strip().lower() for skill in request.form['skills'].split(',')]
+	user = Users(request.form['email'],request.form['password'],request.form['linkedinUrl'],skills)
 	user_id = db.users.insert(user.__dict__ , w=1)
 	flash(u'User created with id %s' % user_id)
 	return redirect(url_for('signin'))
@@ -67,3 +67,8 @@ def load_user(id):
 @app.before_request
 def before_request():
     g.user = current_user
+
+@app.route('/search')
+@login_required
+def search():
+	return render_template('search.html' , title="Search Jobs")
