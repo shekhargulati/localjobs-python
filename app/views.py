@@ -1,8 +1,10 @@
 from app import app , db , login_manager
-from flask import render_template , request , flash , redirect , url_for ,g
+from flask import render_template , request , flash , redirect , url_for ,g , jsonify
 from models import Users
 from flask.ext.login import login_user , logout_user , current_user , login_required
 from bson.objectid import ObjectId
+import json
+from bson import json_util
 
 @app.route('/')
 def index():
@@ -72,3 +74,24 @@ def before_request():
 @login_required
 def search():
 	return render_template('search.html' , title="Search Jobs")
+
+@app.route('/api/jobs')
+@login_required
+def jobs():
+	jobs = db.jobs.find().limit(25)
+	return json.dumps({'jobs':list(jobs)},default=json_util.default)
+
+@app.route('/api/jobs/id/<job_id>')
+@login_required
+def job(job_id):
+	job = db.jobs.find_one({"_id":ObjectId(str(job_id))})
+	return json.dumps({'job':job},default=json_util.default)
+
+@app.route('/api/jobs/<skills>')
+@login_required
+def jobs_near_with_skills(skills):
+	lat = float(request.args.get('latitude'))
+	lon = float(request.args.get('longitude'))
+
+	jobs = db.jobs.find({"skills" : {"$in" : skills.split(',')} , "location" : { "$near" : [lon,lat]}}).limit(10)
+	return json.dumps({'jobs':list(jobs)},default=json_util.default)
